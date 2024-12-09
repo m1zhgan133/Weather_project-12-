@@ -64,7 +64,35 @@ API_KEY = '27c347c2-c26b-4cae-80c2-f0e501980363'
 # Пример использования
 api = WeatherAPI(API_KEY)
 
+#-----------------------------------------------------Test---------------------------------------------------------------------------
+print(api.current_weather(37.588817, 55.76876))
+print(api.forecast_24h(37.588817, 55.76876))
 
+tests = [
+{'temperature': 40,  #!!!! из-за этого плохая погода
+     'humidity': 50,
+     'wind_speed': 9,
+     'precipitation_probability': 1},
+{'temperature': 1,
+    'humidity': 1,  #!!!! из-за этого плохая погода
+    'wind_speed': 1,
+    'precipitation_probability': 1},
+{'temperature': 10,
+    'humidity': 20,
+    'wind_speed': 20, #!!!! из-за этого плохая погода
+    'precipitation_probability': 30},
+{'temperature': -5,
+    'humidity': 40,
+    'wind_speed': 5,
+    'precipitation_probability': 80},  #!!!! из-за этого плохая погода
+{'temperature': 10,# все хорошо
+    'humidity': 20,
+    'wind_speed': 5,
+    'precipitation_probability': 30},
+]
+
+for test in tests:
+    print(api.check_bad_weather(test))
 #-----------------------------------------------------Flask---------------------------------------------------------------------------
 
 app = Flask(__name__)
