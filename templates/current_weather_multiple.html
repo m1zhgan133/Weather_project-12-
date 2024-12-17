@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Данные о погоде для нескольких точек</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #e0f7fa; /* Нежно-голубой фон */
+        }
+        .weather-card {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+        h1 {
+            color: #343a40;
+        }
+        .weather-info {
+            font-size: 1.5rem;
+            color: #495057;
+        }
+        .spacer {
+            margin: 30px 0; /* Отступ между секциями */
+        }
+        .blue {
+            color: #42AAFF; /* Цвет голубой */
+        }
+        .point-header {
+            margin-top: 20px;
+            border-bottom: 2px solid #42AAFF;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="weather-card text-center">
+        <h1>Данные о погоде для нескольких точек</h1>
+
+        {% for weather in weather_data %}
+            <div class="point-header">
+                <h2>Точка {{ loop.index }}</h2> <!-- Используем loop.index для получения текущего индекса -->
+            </div>
+            <div class="weather-info">
+                <p class="blue"><strong>{{ api.check_bad_weather(weather) }}</strong></p>
+                <p><strong>Температура:</strong> {{ weather.temperature }} °C</p>
+                <p><strong>Влажность:</strong> {{ weather.humidity }} %</p>
+                <p><strong>Скорость ветра:</strong> {{ weather.wind_speed }} м/с</p>
+                <p><strong>Вероятность дождя:</strong> {{ weather.precipitation_probability }} %</p>
+            </div>
+            <div class="spacer"></div> <!-- Отступ между точками -->
+        {% endfor %}
+
+        <div class="spacer"></div> <!-- Отступ перед кнопками -->
+
+        <a href="/" class="btn btn-primary">Назад</a>
+        <a href="/dash/" class="btn btn-secondary">Перейти к графикам</a> <!-- Кнопка для перехода к графикам -->
+    </div>
+</div>
+</body>
+</html>

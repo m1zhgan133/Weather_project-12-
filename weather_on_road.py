@@ -162,6 +162,8 @@ def result():
                         'day3': [],}
         for point in points:
             forecast = api.forecast(point[0], point[1])
+            if forecast is None:
+                return "Ошибка: Не удалось получить прогноз погоды", 500
             weather_data['day0'].append(forecast[0])
             weather_data['day1'].append(forecast[1])
             weather_data['day2'].append(forecast[2])
