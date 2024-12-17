@@ -1,5 +1,10 @@
 from flask import Flask, jsonify, render_template, request, redirect, url_for
-import requests, json, os
+import requests, json, os, dash, plotly
+import plotly.express as px
+import pandas as pd
+from sklearn.datasets import load_iris
+import dash_bootstrap_components as dbc
+from dash import dcc, html
 
 
 
@@ -59,14 +64,14 @@ class WeatherAPI:
 
 
 
-API_KEY = '27c347c2-c26b-4cae-80c2-f0e501980363'
+API_KEY = '41db2fd8-c751-405c-b3d6-8e47db9ee099'
 
 # Пример использования
 api = WeatherAPI(API_KEY)
 
 #-----------------------------------------------------Test---------------------------------------------------------------------------
 print(api.current_weather(37.588817, 55.76876))
-print(api.forecast_24h(37.588817, 55.76876))
+#print(api.forecast_24h(37.588817, 55.76876))
 
 tests = [
 {'temperature': 40,  #!!!! из-за этого плохая погода
@@ -96,6 +101,7 @@ for test in tests:
 #-----------------------------------------------------Flask---------------------------------------------------------------------------
 
 app = Flask(__name__)
+weather_data_for_dash = None
 
 @app.route('/weather/<float:lat>/<float:lon>', methods=['GET'])
 def get_current_weather(lat, lon):
@@ -118,25 +124,65 @@ def index():
 
 @app.route('/result')
 def result():
+    global weather_data_for_dash  # Указываем, что будем использовать глобальную переменную
     try:
         point1_inform = api.current_weather(request.args.get('lon1'), request.args.get('lat1'))
         point2_inform = api.current_weather(request.args.get('lon2'), request.args.get('lat2'))
 
+        # Создание DataFrame для графика
+        weather_data_for_dash = pd.DataFrame({
+            'Location': ['Point 1', 'Point 2'],
+            'Temperature': [point1_inform['temperature'], point2_inform['temperature']],
+            'Humidity': [point1_inform['humidity'], point2_inform['humidity']],
+            'Wind Speed': [point1_inform['wind_speed'], point2_inform['wind_speed']],
+            'Precipitation Probability': [point1_inform['precipitation_probability'], point2_inform['precipitation_probability']]
+        })
+
         return render_template('current_weather_2_points.html',
-                               good_weather1 = api.check_bad_weather(point1_inform),
+                               good_weather1=api.check_bad_weather(point1_inform),
                                temperature1=point1_inform['temperature'],
                                humidity1=point1_inform['humidity'],
                                wind_speed1=point1_inform['wind_speed'],
                                precipitation_probability1=point1_inform['precipitation_probability'],
 
-                               good_weather2 = api.check_bad_weather(point2_inform),
+                               good_weather2=api.check_bad_weather(point2_inform),
                                temperature2=point2_inform['temperature'],
                                humidity2=point2_inform['humidity'],
                                wind_speed2=point2_inform['wind_speed'],
                                precipitation_probability2=point2_inform['precipitation_probability']
                                )
     except:
-        return  'Ошибка: Вы ввели некорректные данные'
+        return 'Ошибка: Вы ввели некорректные данные'
+
+# Dash app
+dash_app = dash.Dash(__name__, server=app, url_base_pathname='/dash/')
+
+@dash_app.callback(
+    dash.dependencies.Output('weather-graph', 'figure'),
+    [dash.dependencies.Input('location-dropdown', 'value')]
+)
+def update_graph(selected_location):
+    # Получаем данные из глобальной переменной
+    df = weather_data_for_dash
+
+    # Создание графика
+    fig = px.bar(df, x='Location', y=['Temperature', 'Humidity', 'Wind Speed', 'Precipitation Probability'],
+                 title='Weather Data for Two Points', barmode='group')
+    return fig
+
+dash_app.layout = html.Div([
+    dcc.Dropdown(
+        id='location-dropdown',
+        options=[
+            {'label': 'Point 1', 'value': 'Point 1'},  # Используем метки для выбора
+            {'label': 'Point 2', 'value': 'Point 2'},
+        ],
+        value='Point 1'  # Устанавливаем значение по умолчанию
+    ),
+    dcc.Graph(id='weather-graph')
+])
+
+
 
 
 if __name__ == '__main__':

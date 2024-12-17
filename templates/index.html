@@ -28,28 +28,20 @@
 
 <div class="container">
     <div class="input-card">
-        <h1 class="text-center">Введите координаты двух точек</h1>
-        <form method="post">
-            <h2>Точка 1</h2>
-            <div class="form-group">
-                <label for="lat1" class="form-label">Широта(lat):</label>
-                <input type="text" class="form-control" id="lat1" name="lat1" required>
+        <h1 class="text-center">Введите координаты точек</h1>
+        <form method="post" id="coordinatesForm">
+            <div id="pointsContainer">
+                <h2>Точка 1</h2>
+                <div class="form-group">
+                    <label for="lat1" class="form-label">Широта(lat):</label>
+                    <input type="text" class="form-control" id="lat1" name="lat[]" required>
+                </div>
+                <div class="form-group">
+                    <label for="lon1" class="form-label">Долгота(lon):</label>
+                    <input type="text" class="form-control" id="lon1" name="lon[]" required>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="lon1" class="form-label">Долгота(lon):</label>
-                <input type="text" class="form-control" id="lon1" name="lon1" required>
-            </div>
-
-            <h2>Точка 2</h2>
-            <div class="form-group">
-                <label for="lat2" class="form-label">Широта(lat):</label>
-                <input type="text" class="form-control" id="lat2" name="lat2" required>
-            </div>
-            <div class="form-group">
-                <label for="lon2" class="form-label">Долгота(lon):</label>
-                <input type="text" class="form-control" id="lon2" name="lon2" required>
-            </div>
-
+            <button type="button" class="btn btn-secondary" id="addPointButton">Добавить точку</button>
             <button type="submit" class="btn btn-primary btn-block">Отправить</button>
         </form>
     </div>
@@ -58,5 +50,27 @@
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    let pointCount = 1;
+
+    document.getElementById('addPointButton').addEventListener('click', function() {
+        pointCount++;
+        const pointsContainer = document.getElementById('pointsContainer');
+
+        const newPointHTML = `
+            <h2>Точка ${pointCount}</h2>
+            <div class="form-group">
+                <label for="lat${pointCount}" class="form-label">Широта(lat):</label>
+                <input type="text" class="form-control" id="lat${pointCount}" name="lat[]" required>
+            </div>
+            <div class="form-group">
+                <label for="lon${pointCount}" class="form-label">Долгота(lon):</label>
+                <input type="text" class="form-control" id="lon${pointCount}" name="lon[]" required>
+            </div>
+        `;
+
+        pointsContainer.insertAdjacentHTML('beforeend', newPointHTML);
+    });
+</script>
 </body>
 </html>
