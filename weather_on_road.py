@@ -185,32 +185,59 @@ def result():
 # ------------------------------------------------------Dash app-------------------------------------------------------
 dash_app = dash.Dash(__name__, server=app, url_base_pathname='/dash/')
 
-@dash_app.callback(
-    dash.dependencies.Output('weather-graph', 'figure'),
-    [dash.dependencies.Input('location-dropdown', 'value')]
-)
-def update_graph(selected_location):
-    # Получаем данные из глобальной переменной
-    df = weather_data_for_dash
-
-    # Создание графика
-    fig = px.bar(df, x='Location', y=['Temperature', 'Humidity', 'Wind Speed', 'Precipitation Probability'],
-                 title='Weather Data for Two Points', barmode='group')
-    return fig
+# Определяем доступные метрики и дни
+metrics = ['Temperature', 'Humidity', 'Wind Speed', 'Precipitation Probability']
+days = ['Day 0', 'Day 1', 'Day 2', 'Day 3']
 
 dash_app.layout = html.Div([
-    dcc.Dropdown(
-        id='location-dropdown',
-        options=[
-            {'label': 'Point 1', 'value': 'Point 1'},  # Используем метки для выбора
-            {'label': 'Point 2', 'value': 'Point 2'},
-        ],
-        value='Point 1'  # Устанавливаем значение по умолчанию
+    dcc.Input(id='dummy-input', style={'display': 'none'}, value=''),
+
+    # Checklist для выбора метрик
+    dcc.Checklist(
+        id='metric-checklist',
+        options=[{'label': metric, 'value': metric} for metric in metrics],
+        value=metrics,  # По умолчанию все метрики выбраны
+        inline=True
     ),
-    dcc.Graph(id='weather-graph')
+
+    # Slider для выбора количества дней
+    dcc.Slider(
+        id='day-slider',
+        min=1,
+        max=len(days),
+        value=len(days),  # По умолчанию показываем все дни
+        marks={i: f'Day {i - 1}' for i in range(1, len(days) + 1)},
+        step=1
+    ),
+
+    html.Div(id='graphs')
 ])
 
 
+@dash_app.callback(
+    Output('graphs', 'children'),
+    Input('dummy-input', 'value'),
+    Input('metric-checklist', 'value'),
+    Input('day-slider', 'value')
+)
+def update_graphs(_, selected_metrics, num_days):
+    graphs = []
+
+    # Ограничиваем количество дней до выбранного значения
+    for metric in selected_metrics:
+        combined_data = pd.DataFrame()
+
+        for day_index in range(num_days):  # Используем только выбранное количество дней
+            df = weather_data_for_dash[day_index]
+            df['Day'] = f'Day {day_index}'  # Добавляем столбец с днем
+            combined_data = pd.concat([combined_data, df], ignore_index=True)
+
+        # Создаем график для текущей характеристики
+        fig = px.bar(combined_data, x='Location', y=metric, color='Day',
+                     title=f'{metric} for Selected Days', barmode='group')
+        graphs.append(dcc.Graph(figure=fig))
+
+    return graphs
 
 
 if __name__ == '__main__':
