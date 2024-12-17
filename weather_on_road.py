@@ -58,7 +58,7 @@ class WeatherAPI:
     }
 
 
-    # Получает температуру через 24 часа
+    # Получает актуальную температуру и прогноз на это же время на 3 дня вперед
     def forecast(self, lon, lat):
         future_weather = self.request(lon, lat)
         #время сейчас
@@ -90,7 +90,6 @@ class WeatherAPI:
 
 API_KEY = '41db2fd8-c751-405c-b3d6-8e47db9ee099'
 
-# Пример использования
 api = WeatherAPI(API_KEY)
 
 #-----------------------------------------------------Test---------------------------------------------------------------------------
@@ -155,37 +154,36 @@ def index():
 def result():
     global weather_data_for_dash  # Указываем, что будем использовать глобальную переменную
     global points
-    # try:
-    weather_data_for_dash = []
-    weather_data = {'day0': [],
-                    'day1': [],
-                    'day2': [],
-                    'day3': [],}
-    for point in points:
-        forecast = api.forecast(point[0], point[1])
-        weather_data['day0'].append(forecast[0])
-        weather_data['day1'].append(forecast[1])
-        weather_data['day2'].append(forecast[2])
-        weather_data['day3'].append(forecast[3])
-        #weather_data это сипсок с точками каждая точка список погоды для дней
-        # Создание DataFrame для графика
-    for day in ('day0', 'day1', 'day2', 'day3'):
-        weather_data_for_dash.append(pd.DataFrame({
-            'Location': [f'Point {i + 1}' for i in range(len(weather_data[day]))],
-            'Temperature': [info['temperature'] for info in weather_data[day]],
-            'Humidity': [info['humidity'] for info in weather_data[day]],
-            'Wind Speed': [info['wind_speed'] for info in weather_data[day]],
-            'Precipitation Probability': [info['precipitation_probability'] for info in weather_data[day]]
-        }))
-    return render_template('current_weather_multiple.html', weather_data=weather_data['day0'], api=api)
-    # except:
-    #     return 'Ошибка: Вы ввели некорректные данные'
+    try:
+        weather_data_for_dash = []
+        weather_data = {'day0': [],
+                        'day1': [],
+                        'day2': [],
+                        'day3': [],}
+        for point in points:
+            forecast = api.forecast(point[0], point[1])
+            weather_data['day0'].append(forecast[0])
+            weather_data['day1'].append(forecast[1])
+            weather_data['day2'].append(forecast[2])
+            weather_data['day3'].append(forecast[3])
+            #weather_data это сипсок с точками каждая точка список погоды для дней
+            # Создание DataFrame для графика
+        for day in ('day0', 'day1', 'day2', 'day3'):
+            weather_data_for_dash.append(pd.DataFrame({
+                'Location': [f'Point {i + 1}' for i in range(len(weather_data[day]))],
+                'Temperature': [info['temperature'] for info in weather_data[day]],
+                'Humidity': [info['humidity'] for info in weather_data[day]],
+                'Wind Speed': [info['wind_speed'] for info in weather_data[day]],
+                'Precipitation Probability': [info['precipitation_probability'] for info in weather_data[day]]
+            }))
+        return render_template('current_weather_multiple.html', weather_data=weather_data['day0'], api=api)
+    except:
+        return 'Ошибка: Вы ввели некорректные данные'
 
 
 # ------------------------------------------------------Dash app-------------------------------------------------------
 dash_app = dash.Dash(__name__, server=app, url_base_pathname='/dash/')
 
-# Определяем доступные метрики и дни
 metrics = ['Temperature', 'Humidity', 'Wind Speed', 'Precipitation Probability']
 days = ['Day 0', 'Day 1', 'Day 2', 'Day 3']
 
