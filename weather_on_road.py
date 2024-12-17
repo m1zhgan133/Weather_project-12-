@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, render_template, request, redirect, url_for
-import requests, json, os, dash, plotly
+import requests, json, os, dash, plotly, datetime
 import plotly.express as px
 import pandas as pd
 from sklearn.datasets import load_iris
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from dash.dependencies import Input, Output
 
 
 
@@ -27,7 +28,10 @@ class WeatherAPI:
         else:
             print(f"Произошла ошибка: {response.status_code}, {response.text}")
 
-
+    def unix_time_to_normal(self, unix_time):
+        normal_time = datetime.datetime.fromtimestamp(unix_time)
+        hours = normal_time.strftime('%H')
+        return int(hours)
 
     def check_bad_weather(self, data):
         if data['temperature'] < -10 or data['temperature'] > 30:  return 'Bad weather'
@@ -55,13 +59,33 @@ class WeatherAPI:
 
 
     # Получает температуру через 24 часа
-    def forecast_24h(self, lon, lat):
+    def forecast(self, lon, lat):
+        future_weather = self.request(lon, lat)
         #время сейчас
-        now_time = int(self.request(lon, lat)['now_dt'].split(':')[0][-2:]) + 3
+        now_time = self.unix_time_to_normal(future_weather['now'])
 
+        forecast_list = []
         #прогноз на завтра([1] за это отвечает), в тоже время что и сейчас
-        return self.request(lon, lat)['forecasts'][1]['hours'][now_time]['temp']
+        for day in range(4):
+            # исправляем ошибку связанную с тем что в прогнозе может не быть некоторых часов или дней
+            hours_per_day = len(future_weather['forecasts'][day]['hours'])
+            if now_time >= hours_per_day and hours_per_day != 0: now_time = hours_per_day-1
 
+            if hours_per_day == 0:
+                forecast_list.append({
+                'temperature': 0,
+                'humidity': 0,
+                'wind_speed': 0,
+                'precipitation_probability': 0,
+                })
+            else:
+                forecast_list.append({
+                    'temperature': future_weather['forecasts'][day]['hours'][now_time]['temp'],
+                    'humidity': future_weather['forecasts'][day]['hours'][now_time]['humidity'],
+                    'wind_speed': future_weather['forecasts'][day]['hours'][now_time]['wind_speed'],
+                    'precipitation_probability': future_weather['forecasts'][day]['hours'][now_time]['prec_prob'],
+                })
+        return forecast_list
 
 
 API_KEY = '41db2fd8-c751-405c-b3d6-8e47db9ee099'
@@ -71,7 +95,7 @@ api = WeatherAPI(API_KEY)
 
 #-----------------------------------------------------Test---------------------------------------------------------------------------
 print(api.current_weather(37.588817, 55.76876))
-#print(api.forecast_24h(37.588817, 55.76876))
+print(api.forecast(37.588817, 55.76876))
 
 tests = [
 {'temperature': 40,  #!!!! из-за этого плохая погода
@@ -102,6 +126,7 @@ for test in tests:
 
 app = Flask(__name__)
 weather_data_for_dash = None
+points = []
 
 @app.route('/weather/<float:lat>/<float:lon>', methods=['GET'])
 def get_current_weather(lat, lon):
@@ -114,47 +139,50 @@ def get_current_weather(lat, lon):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    global points
     if request.method == 'POST':
-        lat1 = request.form['lat1']
-        lon1 = request.form['lon1']
-        lat2 = request.form['lat2']
-        lon2 = request.form['lon2']
-        return redirect(url_for('result', lon1=lon1, lat1=lat1, lon2=lon2, lat2=lat2))
+        # Получаем координаты из формы
+        latitudes = request.form.getlist('lat[]')
+        longitudes = request.form.getlist('lon[]')
+
+        # Преобразуем координаты в нужный формат (например, в список кортежей)
+        points = list(zip(latitudes, longitudes))
+        print("Полученные точки:", points)
+        return redirect(url_for('result'))
     return render_template('index.html')
 
 @app.route('/result')
 def result():
     global weather_data_for_dash  # Указываем, что будем использовать глобальную переменную
-    try:
-        point1_inform = api.current_weather(request.args.get('lon1'), request.args.get('lat1'))
-        point2_inform = api.current_weather(request.args.get('lon2'), request.args.get('lat2'))
-
+    global points
+    # try:
+    weather_data_for_dash = []
+    weather_data = {'day0': [],
+                    'day1': [],
+                    'day2': [],
+                    'day3': [],}
+    for point in points:
+        forecast = api.forecast(point[0], point[1])
+        weather_data['day0'].append(forecast[0])
+        weather_data['day1'].append(forecast[1])
+        weather_data['day2'].append(forecast[2])
+        weather_data['day3'].append(forecast[3])
+        #weather_data это сипсок с точками каждая точка список погоды для дней
         # Создание DataFrame для графика
-        weather_data_for_dash = pd.DataFrame({
-            'Location': ['Point 1', 'Point 2'],
-            'Temperature': [point1_inform['temperature'], point2_inform['temperature']],
-            'Humidity': [point1_inform['humidity'], point2_inform['humidity']],
-            'Wind Speed': [point1_inform['wind_speed'], point2_inform['wind_speed']],
-            'Precipitation Probability': [point1_inform['precipitation_probability'], point2_inform['precipitation_probability']]
-        })
+    for day in ('day0', 'day1', 'day2', 'day3'):
+        weather_data_for_dash.append(pd.DataFrame({
+            'Location': [f'Point {i + 1}' for i in range(len(weather_data[day]))],
+            'Temperature': [info['temperature'] for info in weather_data[day]],
+            'Humidity': [info['humidity'] for info in weather_data[day]],
+            'Wind Speed': [info['wind_speed'] for info in weather_data[day]],
+            'Precipitation Probability': [info['precipitation_probability'] for info in weather_data[day]]
+        }))
+    return render_template('current_weather_multiple.html', weather_data=weather_data['day0'], api=api)
+    # except:
+    #     return 'Ошибка: Вы ввели некорректные данные'
 
-        return render_template('current_weather_2_points.html',
-                               good_weather1=api.check_bad_weather(point1_inform),
-                               temperature1=point1_inform['temperature'],
-                               humidity1=point1_inform['humidity'],
-                               wind_speed1=point1_inform['wind_speed'],
-                               precipitation_probability1=point1_inform['precipitation_probability'],
 
-                               good_weather2=api.check_bad_weather(point2_inform),
-                               temperature2=point2_inform['temperature'],
-                               humidity2=point2_inform['humidity'],
-                               wind_speed2=point2_inform['wind_speed'],
-                               precipitation_probability2=point2_inform['precipitation_probability']
-                               )
-    except:
-        return 'Ошибка: Вы ввели некорректные данные'
-
-# Dash app
+# ------------------------------------------------------Dash app-------------------------------------------------------
 dash_app = dash.Dash(__name__, server=app, url_base_pathname='/dash/')
 
 @dash_app.callback(
