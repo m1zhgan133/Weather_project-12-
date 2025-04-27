@@ -88,7 +88,7 @@ class WeatherAPI:
         return forecast_list
 
 
-API_KEY = '41db2fd8-c751-405c-b3d6-8e47db9ee099'
+API_KEY = 'enter_your_own_api_key' # like 41db2fd8-c751-405c-b3d6- 8e47db9ee099
 
 api = WeatherAPI(API_KEY)
 
